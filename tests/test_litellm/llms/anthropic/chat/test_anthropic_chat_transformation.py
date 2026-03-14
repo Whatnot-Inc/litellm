@@ -3321,3 +3321,48 @@ def test_map_tool_helper_empty_parameters_get_default():
     assert result is not None
     assert result["input_schema"]["type"] == "object"
     assert result["input_schema"].get("properties") == {}
+
+
+
+def test_supports_assistant_prefill_claude_4_6_models():
+    """Claude 4.6 models should not support assistant prefill."""
+    import litellm
+    from litellm.utils import supports_assistant_prefill
+
+    with patch.dict(
+        litellm.model_cost,
+        {
+            "claude-sonnet-4-6": {
+                "litellm_provider": "anthropic",
+                "supports_assistant_prefill": False,
+            },
+            "claude-opus-4-6": {
+                "litellm_provider": "anthropic",
+                "supports_assistant_prefill": False,
+            },
+        },
+    ):
+        assert supports_assistant_prefill(model="claude-sonnet-4-6", custom_llm_provider="anthropic") is False
+        assert supports_assistant_prefill(model="claude-opus-4-6", custom_llm_provider="anthropic") is False
+
+
+def test_supports_assistant_prefill_older_models():
+    """Older Claude models should support assistant prefill."""
+    import litellm
+    from litellm.utils import supports_assistant_prefill
+
+    with patch.dict(
+        litellm.model_cost,
+        {
+            "claude-sonnet-4-5-20250929": {
+                "litellm_provider": "anthropic",
+                "supports_assistant_prefill": True,
+            },
+            "claude-haiku-4-5-20250929": {
+                "litellm_provider": "anthropic",
+                "supports_assistant_prefill": True,
+            },
+        },
+    ):
+        assert supports_assistant_prefill(model="claude-sonnet-4-5-20250929", custom_llm_provider="anthropic") is True
+        assert supports_assistant_prefill(model="claude-haiku-4-5-20250929", custom_llm_provider="anthropic") is True
