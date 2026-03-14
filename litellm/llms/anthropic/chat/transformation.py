@@ -16,6 +16,9 @@ from litellm.constants import (
     RESPONSE_FORMAT_TOOL_NAME,
 )
 from litellm.litellm_core_utils.core_helpers import map_finish_reason
+from litellm.litellm_core_utils.prompt_templates.common_utils import (
+    convert_prefix_message_to_non_prefix_messages,
+)
 from litellm.llms.base_llm.base_utils import type_to_response_format_param
 from litellm.llms.base_llm.chat.transformation import BaseConfig, BaseLLMException
 from litellm.types.llms.anthropic import (
@@ -64,6 +67,7 @@ from litellm.utils import (
     get_max_tokens,
     has_tool_call_blocks,
     last_assistant_with_tool_calls_has_no_thinking_blocks,
+    supports_assistant_prefill,
     supports_reasoning,
     token_counter,
 )
@@ -1363,6 +1367,18 @@ class AnthropicConfig(AnthropicModelInfo, BaseConfig):
         headers = self.update_headers_with_optional_anthropic_beta(
             headers=headers, optional_params=optional_params
         )
+
+        # Strip assistant prefill for models that don't support it (e.g., Claude 4.6)
+        if (
+            messages
+            and messages[-1].get("role") == "assistant"
+            and messages[-1].get("prefix", False)
+            and not supports_assistant_prefill(
+                model=model,
+                custom_llm_provider=self.custom_llm_provider,
+            )
+        ):
+            messages = convert_prefix_message_to_non_prefix_messages(messages)
 
         # Separate system prompt from rest of message
         anthropic_system_message_list = self.translate_system_message(messages=messages)
