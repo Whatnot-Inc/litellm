@@ -2364,6 +2364,7 @@ def _build_oauth_authorization_server_response(
 
     request_base_url = get_request_base_url(request)
     client_ip = IPAddressUtils.get_mcp_client_ip(request)
+    requested_mcp_server_name = mcp_server_name
 
     # When no server name provided, try to resolve the single OAuth2 server
     if mcp_server_name is None:
@@ -2371,6 +2372,7 @@ def _build_oauth_authorization_server_response(
         if resolved:
             mcp_server_name = resolved.server_name or resolved.name
 
+    issuer = f"{request_base_url}/{requested_mcp_server_name}" if requested_mcp_server_name else request_base_url
     authorization_endpoint = (
         f"{request_base_url}/{mcp_server_name}/authorize" if mcp_server_name else f"{request_base_url}/authorize"
     )
@@ -2383,7 +2385,7 @@ def _build_oauth_authorization_server_response(
     _raise_unless_oauth2_discovery_server(mcp_server, mcp_server_name, "not an OAuth authorization server")
 
     return {
-        "issuer": request_base_url,  # point to your proxy
+        "issuer": issuer,
         "authorization_endpoint": authorization_endpoint,
         "token_endpoint": token_endpoint,
         "response_types_supported": ["code"],

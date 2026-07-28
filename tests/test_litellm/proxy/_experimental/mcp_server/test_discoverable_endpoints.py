@@ -3025,6 +3025,7 @@ async def test_oauth_authorization_server_returns_empty_scopes_when_none():
             mcp_server_name="atlassian_mcp",
         )
         assert response["scopes_supported"] == []
+        assert response["issuer"] == "https://litellm.example.com/atlassian_mcp"
     finally:
         global_mcp_server_manager.registry.clear()
 
@@ -3062,6 +3063,30 @@ def _create_oauth2_server(
         scopes=["read", "write"],
         available_on_public_internet=available_on_public_internet,
     )
+
+
+def test_oauth_authorization_server_root_metadata_keeps_origin_issuer():
+    from fastapi import Request
+
+    from litellm.proxy._experimental.mcp_server.discoverable_endpoints import (
+        _build_oauth_authorization_server_response,
+    )
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+        global_mcp_server_manager,
+    )
+
+    server = _create_oauth2_server()
+    global_mcp_server_manager.registry.clear()
+    global_mcp_server_manager.registry[server.server_id] = server
+    request = MagicMock(spec=Request)
+    request.base_url = "https://litellm.example.com/"
+    request.headers = {}
+
+    try:
+        result = _build_oauth_authorization_server_response(request=request, mcp_server_name=None)
+        assert result["issuer"] == "https://litellm.example.com"
+    finally:
+        global_mcp_server_manager.registry.clear()
 
 
 @pytest.mark.asyncio
@@ -4583,6 +4608,7 @@ def test_oauth_authorization_server_metadata_served_for_bridge_server():
     which is what makes the DCR front door discoverable to standard MCP clients."""
     result = _named_as_metadata_response(_bridge_server())
 
+    assert result["issuer"] == "https://litellm.example.com/bridge_srv"
     assert result["authorization_endpoint"] == "https://litellm.example.com/bridge_srv/authorize"
     assert result["token_endpoint"] == "https://litellm.example.com/bridge_srv/token"
     assert result["registration_endpoint"] == "https://litellm.example.com/bridge_srv/register"
